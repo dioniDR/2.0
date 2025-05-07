@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <unistd.h>
-#include "common_utils.h"
+#include "../common/includes/utils.h"
 
 // Función para escapar caracteres especiales en JSON
 char* escape_json(const char* input) {
@@ -156,9 +156,26 @@ char* send_prompt(const char *prompt, const char *role_file) {
     // Enviar la solicitud
     char cmd[1024];
     // Leer la clave API desde config.txt
-    char *api_key = read_api_key();
+    FILE *config = fopen("api/config.txt", "r");
+    if (!config) {
+        fprintf(stderr, "Error: No se pudo abrir el archivo api/config.txt\n");
+        return strdup("Error: No se pudo leer la clave API desde api/config.txt.");
+    }
+
+    char line[256];
+    char *api_key = NULL;
+    while (fgets(line, sizeof(line), config)) {
+        // Buscar la línea que comienza con "API_KEY="
+        if (strncmp(line, "API_KEY=", 8) == 0) {
+            api_key = strdup(line + 8); // Copiar el valor después de "API_KEY="
+            api_key[strcspn(api_key, "\r\n")] = 0; // Eliminar saltos de línea
+            break;
+        }
+    }
+    fclose(config);
+
     if (!api_key) {
-        return strdup("Error: No se pudo leer la clave API desde config.txt.");
+        return strdup("Error: No se encontró la clave API en api/config.txt.");
     }
 
     snprintf(cmd, sizeof(cmd),
@@ -268,6 +285,3 @@ char* send_prompt(const char *prompt, const char *role_file) {
     
     return strdup(response);
 }
-
-// Function to read the API key from config.txt
-extern char* read_api_key();

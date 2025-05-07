@@ -10,4 +10,7 @@ char* extract_command_improved(const char *text, const char *language);
 // Función mejorada para ejecutar comandos
 char* run_command_improved(const char *cmd);
 
+// Función para leer la clave API desde config.txt
+char* read_api_key();
+
 #endif /* COMMON_UTILS_H */

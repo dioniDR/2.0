@@ -1,3 +1,36 @@
+# Archivos ejecutables compilados
+gpt_*
+bin/
+
+# Archivos temporales generados en tiempo de ejecución
+req.json
+resp.json
+out.txt
+context.txt
+
+# Archivos de configuración (contienen API keys)
+api/config.txt
 config.txt
-config.txt
-config.txt
+
+# Archivos de respaldo y temporales
+*~
+*.bak
+*.swp
+*.tmp
+.DS_Store
+
+# Archivos de objeto y dependencias
+*.o
+*.d
+
+# Directorios de desarrollo y editores
+.vscode/
+.idea/
+.vim/
+
+# Logs
+*.log
+
+# Dependencias y directorios locales
+/node_modules
+/vendor

@@ -1,27 +1,50 @@
-all: gpt_arch gpt_chat gpt_creator
+CC = gcc
+CFLAGS = -Wall -Wextra
+INCLUDES = -I. -Icommon/includes -Iapi
 
-gpt_arch:
-	gcc -DMODO_ARCH -o gpt_arch main.c chat.c context.c common_utils.c executor_arch.c -Wall
+# Descubrir todos los archivos .c en common
+COMMON_SRCS := $(shell find common -name "*.c")
+API_SRCS := api/openai.c
+MODULES_DIR = modulos
 
-gpt_chat:
-	gcc -DMODO_CHAT -o gpt_chat main.c chat.c context.c common_utils.c executor_chat.c -Wall
+# Detectar automáticamente todos los módulos disponibles
+AVAILABLE_MODULES := $(notdir $(wildcard $(MODULES_DIR)/*))
 
-gpt_creator:
-	gcc -DMODO_CREATOR -o gpt_creator main.c chat.c context.c common_utils.c executor_creator.c -Wall
+# Objetivo predeterminado
+all: $(AVAILABLE_MODULES)
 
-clean:
-	rm -f gpt_arch gpt_chat gpt_creator req.json out.txt resp.json context.txt
+# Regla dinámica para compilar cualquier módulo
+$(AVAILABLE_MODULES):
+	@echo "Compilando módulo: $@"
+	$(CC) $(CFLAGS) -DMODO_$(shell echo $@ | tr a-z A-Z) \
+		$(INCLUDES) -I$(MODULES_DIR)/$@ \
+		-o gpt_$@ main.c $(COMMON_SRCS) $(API_SRCS) $(MODULES_DIR)/$@/executor.c
+	@echo "✅ Módulo $@ compilado como: gpt_$@"
 
+# Listar módulos disponibles
+list:
+	@echo "Módulos disponibles para compilar:"
+	@for module in $(AVAILABLE_MODULES); do \
+		echo "  - $$module (make $$module)"; \
+	done
+
+# Verificar API key
 test_api:
 	@echo "Probando conexión a la API de OpenAI..."
-	@curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $$(cat config.txt | grep API_KEY | cut -d= -f2)" | grep -q "gpt-3.5-turbo" && echo "✓ API Key válida y conexión establecida correctamente." || echo "✗ Error al conectar con la API. Verifica tu API Key y conexión a internet."
+	@curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $$(cat api/config.txt | grep API_KEY | cut -d= -f2)" | grep -q "gpt-3.5-turbo" && echo "✓ API Key válida y conexión establecida correctamente." || echo "✗ Error al conectar con la API. Verifica tu API Key y conexión a internet."
+
+# Limpiar archivos compilados
+clean:
+	rm -f gpt_*
+	rm -f req.json out.txt resp.json context.txt
 
 help:
 	@echo "Comandos disponibles:"
-	@echo "  make          - Compila todos los programas"
-	@echo "  make gpt_arch - Compila el asistente para Arch Linux"
-	@echo "  make gpt_chat - Compila el asistente conversacional general"
-	@echo "  make gpt_creator - Compila el generador de estructuras de proyecto"
+	@echo "  make          - Compila todos los módulos"
+	@echo "  make [modulo] - Compila un módulo específico (ej: make chat)"
+	@echo "  make list     - Muestra los módulos disponibles"
 	@echo "  make clean    - Elimina archivos compilados y temporales"
 	@echo "  make test_api - Verifica si la API key es válida"
 	@echo "  make help     - Muestra esta ayuda"
+
+.PHONY: all list clean help test_api $(AVAILABLE_MODULES)

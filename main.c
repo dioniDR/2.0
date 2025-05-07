@@ -2,16 +2,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
-#include "chat.h"
-#include "context.h"
+
+// Inclusiones comunes
+#include "common/includes/utils.h"
+#include "common/includes/context.h"
+#include "api/openai.h"
 
 // Banner del programa
-void print_banner(const char* role_file) {
+void print_banner(const char* module_name) {
     printf("\n");
     printf("╔══════════════════════════════════════════════════╗\n");
-    printf("║           GPT Terminal Assistant v1.0            ║\n");
+    printf("║           GPT Terminal Assistant v1.1            ║\n");
     printf("╠══════════════════════════════════════════════════╣\n");
-    printf("║ Modo: %-43s ║\n", role_file);
+    printf("║ Modo: %-43s ║\n", module_name);
     printf("╠══════════════════════════════════════════════════╣\n");
     printf("║ Comandos internos:                              ║\n");
     printf("║ !ayuda    - Muestra esta ayuda                  ║\n");
@@ -24,8 +27,8 @@ void print_banner(const char* role_file) {
 }
 
 // Comando para mostrar la ayuda
-void show_help(const char* role_file) {
-    print_banner(role_file);
+void show_help(const char* module_name) {
+    print_banner(module_name);
 }
 
 // Comando para limpiar el contexto
@@ -61,18 +64,27 @@ void handle_signal(int sig) {
 }
 
 #ifdef MODO_ARCH
-#include "executor_arch.h"
-#define ROLE_FILE "roles/arch.txt"
+#include "modulos/arch/executor.h"
+#define MODULE_NAME "Asistente Arch Linux"
+#define ROLE_FILE "modulos/arch/role.txt"
+#define extract_command extract_command_arch
+#define run_command run_command_arch
 #endif
 
 #ifdef MODO_CHAT
-#include "executor_chat.h"
-#define ROLE_FILE "roles/chat.txt"
+#include "modulos/chat/executor.h"
+#define MODULE_NAME "Asistente Conversacional"
+#define ROLE_FILE "modulos/chat/role.txt"
+#define extract_command extract_command_chat
+#define run_command run_command_chat
 #endif
 
 #ifdef MODO_CREATOR
-#include "executor_creator.h"
-#define ROLE_FILE "roles/creator.txt"
+#include "modulos/creator/executor.h"
+#define MODULE_NAME "Generador de Estructuras"
+#define ROLE_FILE "modulos/creator/role.txt"
+#define extract_command extract_command_creator
+#define run_command run_command_creator
 #endif
 
 int main() {
@@ -80,12 +92,11 @@ int main() {
     signal(SIGINT, handle_signal);
     
     // Inicializar
-    load_api_key();
     load_context();
     char input[2048];
 
     // Mostrar banner de bienvenida
-    print_banner(ROLE_FILE);
+    print_banner(MODULE_NAME);
 
     // Bucle principal
     while (1) {
@@ -98,7 +109,7 @@ int main() {
             printf("¡Hasta pronto!\n");
             break;
         } else if (strncmp(input, "!ayuda", 6) == 0) {
-            show_help(ROLE_FILE);
+            show_help(MODULE_NAME);
             continue;
         } else if (strncmp(input, "!limpiar", 8) == 0) {
             system("clear");
@@ -110,7 +121,7 @@ int main() {
             reset_context();
             continue;
         } else if (strncmp(input, "!version", 8) == 0) {
-            printf("GPT Terminal Assistant v1.0\n");
+            printf("GPT Terminal Assistant v1.1\n");
             continue;
         }
 
@@ -126,17 +137,7 @@ int main() {
         printf("\n[GPT]:\n%s\n", respuesta);
 
         // Detectar y ejecutar comandos
-        char* comando = NULL;
-        
-#ifdef MODO_ARCH
-        comando = extract_command_arch(respuesta);
-#endif
-#ifdef MODO_CHAT
-        comando = extract_command_chat(respuesta);
-#endif
-#ifdef MODO_CREATOR
-        comando = extract_command_creator(respuesta);
-#endif
+        char* comando = extract_command(respuesta);
 
         if (comando) {
             printf("\n[Shell] Ejecutando:\n%s\n", comando);
@@ -156,19 +157,9 @@ int main() {
                 }
             }
             
-            // Ejecutar el comando según el modo
-            char* salida = NULL;
+            // Ejecutar el comando
+            char* salida = run_command(comando);
             
-#ifdef MODO_ARCH
-            salida = run_command_arch(comando);
-#endif
-#ifdef MODO_CHAT
-            salida = run_command_chat(comando);
-#endif
-#ifdef MODO_CREATOR
-            salida = run_command_creator(comando);
-#endif
-
             printf("\n[Salida]:\n%s\n", salida);
             append_to_context(comando, salida);
             free(salida);
