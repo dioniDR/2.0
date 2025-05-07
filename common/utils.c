@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <sys/wait.h>
-#include "common_utils.h"
+#include "includes/utils.h"
 
 // Función para eliminar espacios en blanco al inicio y final de una cadena
 char* trim(char* str) {

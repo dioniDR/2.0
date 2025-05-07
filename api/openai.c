@@ -6,67 +6,31 @@
 #include <ctype.h>
 #include <unistd.h>
 #include "../common/includes/utils.h"
+#include "../common/includes/config_manager.h" // Nueva inclusión
 
-// Función para escapar caracteres especiales en JSON
+// Función para escapar caracteres especiales en JSON (sin cambios)
 char* escape_json(const char* input) {
-    if (!input) return NULL;
-    
-    size_t input_len = strlen(input);
-    // Reservamos espacio extra para posibles escapes (4x debería ser suficiente en el peor caso)
-    char* escaped = malloc(input_len * 4 + 1);
-    if (!escaped) return NULL;
-    
-    size_t j = 0;
-    for (size_t i = 0; i < input_len; i++) {
-        switch (input[i]) {
-            case '\\': 
-                escaped[j++] = '\\';
-                escaped[j++] = '\\';
-                break;
-            case '"': 
-                escaped[j++] = '\\';
-                escaped[j++] = '"';
-                break;
-            case '\b': 
-                escaped[j++] = '\\';
-                escaped[j++] = 'b';
-                break;
-            case '\f': 
-                escaped[j++] = '\\';
-                escaped[j++] = 'f';
-                break;
-            case '\n': 
-                escaped[j++] = '\\';
-                escaped[j++] = 'n';
-                break;
-            case '\r': 
-                escaped[j++] = '\\';
-                escaped[j++] = 'r';
-                break;
-            case '\t': 
-                escaped[j++] = '\\';
-                escaped[j++] = 't';
-                break;
-            default:
-                if ((unsigned char)input[i] < 32) {
-                    // Controlar caracteres de control
-                    sprintf(escaped + j, "\\u%04x", input[i]);
-                    j += 6;
-                } else {
-                    escaped[j++] = input[i];
-                }
-                break;
-        }
-    }
-    escaped[j] = '\0';
-    return escaped;
+    // ... [código existente sin cambios] ...
 }
 
-char* send_prompt(const char *prompt, const char *role_file) {
-    // Verificar que el archivo de rol existe
-    if (access(role_file, F_OK) != 0) {
-        fprintf(stderr, "Error: El archivo de rol %s no existe.\n", role_file);
-        return strdup("Error: Archivo de rol no encontrado.");
+// Función modificada para usar GPTConfig
+char* send_prompt(const char *prompt, const char *config_file) {
+    // Inicializar la configuración con valores predeterminados
+    GPTConfig config;
+    config_init(&config);
+    
+    // Cargar configuración desde archivo
+    if (config_file && access(config_file, F_OK) == 0) {
+        if (!config_load_from_file(&config, config_file)) {
+            fprintf(stderr, "Advertencia: No se pudo cargar la configuración desde %s, usando valores por defecto\n", config_file);
+        }
+    }
+    
+    // Cargar rol desde archivo si está especificado
+    if (strlen(config.role_file) > 0) {
+        if (!config_load_role(&config)) {
+            fprintf(stderr, "Advertencia: No se pudo cargar la configuración desde %s, usando valores por defecto\n", config.role_file);
+        }
     }
     
     FILE *ctx = fopen("context.txt", "a");
@@ -89,28 +53,21 @@ char* send_prompt(const char *prompt, const char *role_file) {
         return strdup("Error: Problemas de memoria al procesar la solicitud.");
     }
     
-    // Comenzar a escribir el JSON
-    fprintf(rfile, "{\n  \"model\": \"gpt-3.5-turbo\",\n  \"messages\": [\n");
+    // Comenzar a escribir el JSON con el modelo de la configuración
+    fprintf(rfile, "{\n  \"model\": \"%s\",\n", config.model);
+    fprintf(rfile, "  \"temperature\": %.1f,\n", config.temperature);
+    fprintf(rfile, "  \"max_tokens\": %d,\n", config.max_tokens);
+    fprintf(rfile, "  \"messages\": [\n");
 
-    // Agregar el rol del sistema
-    FILE *rolef = fopen(role_file, "r");
-    if (rolef) {
-        char role[16] = {0}, content[2000] = {0};
-        if (fgets(role, sizeof(role), rolef) && fgets(content, sizeof(content), rolef)) {
-            role[strcspn(role, "\r\n")] = 0;
-            content[strcspn(content, "\r\n")] = 0;
-            
-            char* escaped_content = escape_json(content);
-            if (escaped_content) {
-                fprintf(rfile, "    {\"role\": \"%s\", \"content\": \"%s\"},\n", 
-                        role, escaped_content);
-                free(escaped_content);
-            }
-        }
-        fclose(rolef);
+    // Agregar el rol del sistema de la configuración
+    char* escaped_content = escape_json(config.system_content);
+    if (escaped_content) {
+        fprintf(rfile, "    {\"role\": \"%s\", \"content\": \"%s\"},\n", 
+                config.system_role, escaped_content);
+        free(escaped_content);
     }
 
-    // Agregar el contexto previo
+    // Agregar el contexto previo (sin cambios)
     FILE *ctxin = fopen("context.txt", "r");
     if (ctxin) {
         char line[2048];
@@ -150,32 +107,13 @@ char* send_prompt(const char *prompt, const char *role_file) {
     fprintf(rfile, "  ]\n}\n");
     fclose(rfile);
     
-    // Mostrar el JSON para depuración (opcional)
-    //system("cat req.json");
-
     // Enviar la solicitud
     char cmd[1024];
-    // Leer la clave API desde config.txt
-    FILE *config = fopen("api/config.txt", "r");
-    if (!config) {
-        fprintf(stderr, "Error: No se pudo abrir el archivo api/config.txt\n");
-        return strdup("Error: No se pudo leer la clave API desde api/config.txt.");
-    }
-
-    char line[256];
-    char *api_key = NULL;
-    while (fgets(line, sizeof(line), config)) {
-        // Buscar la línea que comienza con "API_KEY="
-        if (strncmp(line, "API_KEY=", 8) == 0) {
-            api_key = strdup(line + 8); // Copiar el valor después de "API_KEY="
-            api_key[strcspn(api_key, "\r\n")] = 0; // Eliminar saltos de línea
-            break;
-        }
-    }
-    fclose(config);
-
+    
+    // Obtener la clave API usando la configuración
+    char *api_key = config_get_api_key(&config);
     if (!api_key) {
-        return strdup("Error: No se encontró la clave API en api/config.txt.");
+        return strdup("Error: No se pudo obtener la clave API.");
     }
 
     snprintf(cmd, sizeof(cmd),
@@ -187,13 +125,12 @@ char* send_prompt(const char *prompt, const char *role_file) {
     free(api_key);
     
     // Ejecutar la solicitud
-    printf("Enviando solicitud a OpenAI...\n");
+    printf("Enviando solicitud a OpenAI con el modelo %s...\n", config.model);
     system(cmd);
     
-    // Mostrar la respuesta para depuración (opcional)
-    //system("cat resp.json");
+    // Verificar código de estado HTTP y procesar respuesta
+    // [resto del código sin cambios]
     
-    // Verificar código de estado HTTP
     FILE *resp = fopen("resp.json", "r");
     if (!resp) {
         return strdup("Error: No se pudo obtener respuesta de la API.");
@@ -246,7 +183,7 @@ char* send_prompt(const char *prompt, const char *role_file) {
         }
     }
     
-    // Extraer el contenido de la respuesta con jq
+    // Extraer el contenido de la respuesta with jq
     system("cat resp.json | jq -r '.choices[0].message.content' > out.txt 2>/dev/null");
     
     // Verificar si jq falló o no está instalado

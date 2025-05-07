@@ -21,6 +21,11 @@ $(AVAILABLE_MODULES):
 		-o gpt_$@ main.c $(COMMON_SRCS) $(API_SRCS) $(MODULES_DIR)/$@/executor.c
 	@echo "✅ Módulo $@ compilado como: gpt_$@"
 
+# Add a default CONFIG_FILE definition for cases where no module is specified
+.DEFAULT:
+	$(CC) $(CFLAGS) -DDEFAULT_CONFIG_FILE="default/config.ini" \
+		$(INCLUDES) -o gpt_default main.c $(COMMON_SRCS) $(API_SRCS)
+
 # Listar módulos disponibles
 list:
 	@echo "Módulos disponibles para compilar:"
