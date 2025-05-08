@@ -9,6 +9,13 @@ void append_to_context(const char* cmd, const char* output) {
 }
 
 void load_context() {
-    FILE *f = fopen("context.txt", "a");
-    if (f) fclose(f);
+    // Verificar si context.txt existe, si no, crearlo
+    FILE *f = fopen("context.txt", "r");
+    if (!f) {
+        // El archivo no existe, crearlo
+        f = fopen("context.txt", "w");
+        if (f) fclose(f);
+    } else {
+        fclose(f);
+    }
 }

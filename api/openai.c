@@ -8,9 +8,71 @@
 #include "../common/includes/utils.h"
 #include "../common/includes/config_manager.h" // Nueva inclusión
 
-// Función para escapar caracteres especiales en JSON (sin cambios)
+// Función para escapar caracteres especiales en JSON
 char* escape_json(const char* input) {
-    // ... [código existente sin cambios] ...
+    if (!input) return NULL;
+    
+    size_t input_len = strlen(input);
+    // Reservar espacio para el peor caso (todos los caracteres necesitan escape)
+    char* output = malloc(input_len * 6 + 1); // Aumentado para manejar casos de Unicode
+    if (!output) return NULL;
+    
+    size_t j = 0;
+    for (size_t i = 0; i < input_len; i++) {
+        unsigned char c = (unsigned char)input[i];
+        
+        // Verificar si es un carácter UTF-8 válido
+        if ((c & 0x80) == 0) {  // ASCII
+            switch (c) {
+                case '\"': // Comilla doble
+                    output[j++] = '\\';
+                    output[j++] = '\"';
+                    break;
+                case '\\': // Barra invertida
+                    output[j++] = '\\';
+                    output[j++] = '\\';
+                    break;
+                case '\b': // Retroceso
+                    output[j++] = '\\';
+                    output[j++] = 'b';
+                    break;
+                case '\f': // Avance de página
+                    output[j++] = '\\';
+                    output[j++] = 'f';
+                    break;
+                case '\n': // Nueva línea
+                    output[j++] = '\\';
+                    output[j++] = 'n';
+                    break;
+                case '\r': // Retorno de carro
+                    output[j++] = '\\';
+                    output[j++] = 'r';
+                    break;
+                case '\t': // Tabulación
+                    output[j++] = '\\';
+                    output[j++] = 't';
+                    break;
+                default:
+                    // Caracteres de control (ASCII 0-31)
+                    if (c < 32) {
+                        char hex[7];
+                        snprintf(hex, sizeof(hex), "\\u%04x", c);
+                        for (int k = 0; k < 6; k++) {
+                            output[j++] = hex[k];
+                        }
+                    } else {
+                        output[j++] = c;
+                    }
+                    break;
+            }
+        } else {
+            // Simplemente copiar caracteres UTF-8 tal cual
+            output[j++] = c;
+        }
+    }
+    
+    output[j] = '\0';
+    return output;
 }
 
 // Función modificada para usar GPTConfig
@@ -68,15 +130,29 @@ char* send_prompt(const char *prompt, const char *config_file) {
     }
 
     // Agregar el contexto previo (sin cambios)
-    FILE *ctxin = fopen("context.txt", "r");
-    if (ctxin) {
-        char line[2048];
-        int message_count = 0;
+    // Agregar el contexto previo
+FILE *ctxin = fopen("context.txt", "r");
+if (ctxin) {
+    char line[2048];
+    int message_count = 0;
+    
+    while (fgets(line, sizeof(line), ctxin)) {
+        // Eliminar el salto de línea final
+        line[strcspn(line, "\r\n")] = 0;
         
-        while (fgets(line, sizeof(line), ctxin)) {
-            char role[16] = {0}, content[2000] = {0};
-            
-            if (sscanf(line, "%15[^\t]\t%[^\n]", role, content) == 2) {
+        char role[16] = {0}, content[2000] = {0};
+        
+        // Usar un método más seguro para separar el rol y el contenido
+        char *tab = strchr(line, '\t');
+        if (tab) {
+            size_t role_len = tab - line;
+            if (role_len < sizeof(role)) {
+                strncpy(role, line, role_len);
+                role[role_len] = '\0';
+                
+                // Copiar el contenido después del tabulador
+                strncpy(content, tab + 1, sizeof(content) - 1);
+                
                 char* escaped_content = escape_json(content);
                 if (escaped_content) {
                     fprintf(rfile, "    {\"role\": \"%s\", \"content\": \"%s\"},\n", 
@@ -86,7 +162,10 @@ char* send_prompt(const char *prompt, const char *config_file) {
                 }
             }
         }
-        fclose(ctxin);
+    }
+    fclose(ctxin);
+    
+    // El resto del código sigue igual...
         
         // Si no hay mensajes en el contexto, agregar solo el prompt actual
         if (message_count == 0) {
@@ -184,10 +263,7 @@ char* send_prompt(const char *prompt, const char *config_file) {
     }
     
     // Extraer el contenido de la respuesta with jq
-    system("cat resp.json | jq -r '.choices[0].message.content' > out.txt 2>/dev/null");
-    
-    // Verificar si jq falló o no está instalado
-    if (system("which jq > /dev/null 2>&1") != 0) {
+    system("sed '/^HTTP_STATUS/d' resp.json > resp_clean.json && cat resp_clean.json | jq -r '.choices[0].message.content' | iconv -f UTF-8 -t UTF-8//IGNORE > out.txt 2>/dev/null || echo 'Error al procesar la respuesta' > out.txt");    if (system("which jq > /dev/null 2>&1") != 0) {
         return strdup("Error: No se pudo procesar la respuesta. Por favor instala 'jq' (sudo apt install jq).");
     }
     

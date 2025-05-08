@@ -26,7 +26,7 @@ int config_load_from_file(GPTConfig *config, const char *filename) {
         }
 
         char key[64], value[2000];
-        if (sscanf(line, "%63[^=]=%1999[^"]", key, value) == 2) {
+        if (sscanf(line, "%63[^=]=%1999[^\r\n]", key, value) == 2) {
             char *k = key;
             while (*k && isspace((unsigned char)*k)) k++;
 
