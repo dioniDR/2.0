@@ -1,0 +1,2 @@
+/home/dioni/Escritorio/gptasistente/2.0/MCPBridge
+/home/dioni/Escritorio/gptasistente/2.0/MCPBridge.pdb

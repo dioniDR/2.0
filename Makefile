@@ -53,3 +53,5 @@ help:
 	@echo "  make help     - Muestra esta ayuda"
 
 .PHONY: all list clean help test_api $(AVAILABLE_MODULES)
+# Incluir reglas MCP (opcional)
+-include Makefile.mcp

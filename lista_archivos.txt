@@ -1,0 +1,14 @@
+api
+common
+config.txt
+context.txt
+gpt_arch
+lista_archivos.txt
+main.c
+Makefile
+modulos
+out.txt
+req.json
+resp_clean.json
+resp.json
+test_arch

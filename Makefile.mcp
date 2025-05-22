@@ -1,0 +1,97 @@
+# Makefile.mcp - Reglas adicionales para MCP
+# Este archivo se incluye en el Makefile principal
+
+# Variables específicas para MCP
+MCP_BRIDGE = MCPBridge
+MCP_BRIDGE_NATIVE = MCPBridge_native
+MCP_CLIENT_SRCS = mcp_client.c
+MAIN_MCP = main_mcp.c
+
+# Compilar el bridge nativo
+build_mcp_bridge:
+	@echo "🔨 Compilando MCP Bridge nativo..."
+	@if [ ! -f $(MCP_BRIDGE).csproj ]; then \
+		echo "❌ No se encontró MCPBridge.csproj"; \
+		exit 1; \
+	fi
+	@echo "📦 Compilando a código nativo (puede tardar 1-2 minutos)..."
+	@dotnet publish $(MCP_BRIDGE).csproj -r linux-x64 -c Release -p:PublishAot=true -o ./
+	@if [ -f $(MCP_BRIDGE) ]; then \
+		mv $(MCP_BRIDGE) $(MCP_BRIDGE_NATIVE); \
+		chmod +x $(MCP_BRIDGE_NATIVE); \
+		echo "✅ Bridge nativo compilado: $(MCP_BRIDGE_NATIVE)"; \
+	else \
+		echo "❌ Error al compilar el bridge"; \
+		exit 1; \
+	fi
+
+# Compilar módulo arch_mcp
+arch_mcp: build_mcp_bridge
+	@echo "🔨 Compilando módulo arch_mcp..."
+	@if [ ! -f $(MCP_BRIDGE_NATIVE) ]; then \
+		echo "❌ Bridge nativo no encontrado. Ejecutando build_mcp_bridge..."; \
+		make -f Makefile.mcp build_mcp_bridge; \
+	fi
+	$(CC) $(CFLAGS) -DMODO_ARCH_MCP \
+		$(INCLUDES) -Imodulos/arch_mcp \
+		-o gpt_arch_mcp $(MAIN_MCP) $(COMMON_SRCS) $(API_SRCS) $(MCP_CLIENT_SRCS) modulos/arch_mcp/executor.c
+	@echo "✅ Módulo arch_mcp compilado como: gpt_arch_mcp"
+	@echo "🚀 Para ejecutar: ./gpt_arch_mcp"
+
+# Probar el bridge MCP
+test_mcp:
+	@echo "🔍 Probando MCP Bridge..."
+	@if [ -f $(MCP_BRIDGE_NATIVE) ]; then \
+		echo "Probando comando get_system_info..."; \
+		echo '{"Action":"get_system_info"}' | ./$(MCP_BRIDGE_NATIVE) | head -n 1 | grep -q "Success" \
+		&& echo "✅ Bridge MCP funciona correctamente" \
+		|| echo "❌ Bridge MCP no responde correctamente"; \
+	else \
+		echo "❌ Bridge nativo no encontrado. Ejecuta 'make build_mcp_bridge'"; \
+	fi
+
+# Probar comando específico
+test_mcp_command:
+	@echo "🔍 Probando ejecución de comando..."
+	@if [ -f $(MCP_BRIDGE_NATIVE) ]; then \
+		echo '{"Action":"execute_command","Data":"uname -a"}' | ./$(MCP_BRIDGE_NATIVE); \
+	else \
+		echo "❌ Bridge nativo no encontrado"; \
+	fi
+
+# Verificar dependencias para MCP
+check_mcp_deps:
+	@echo "🔍 Verificando dependencias MCP..."
+	@which dotnet > /dev/null || (echo "❌ .NET no está instalado"; exit 1)
+	@dotnet --version | grep -q "8.0" || (echo "❌ Se requiere .NET 8.0+"; exit 1)
+	@echo "✅ .NET $(shell dotnet --version) encontrado"
+	@which gcc > /dev/null || (echo "❌ GCC no está instalado"; exit 1)
+	@echo "✅ GCC encontrado"
+	@echo "✅ Todas las dependencias están disponibles"
+
+# Limpiar archivos MCP
+clean_mcp:
+	@echo "🧹 Limpiando archivos MCP..."
+	rm -f gpt_arch_mcp
+	rm -f $(MCP_BRIDGE_NATIVE)
+	rm -f mcp_client.o
+	rm -rf bin/ obj/
+	@echo "✅ Archivos MCP limpiados"
+
+# Ayuda específica para MCP
+help_mcp:
+	@echo "🚀 Comandos MCP disponibles:"
+	@echo "  make build_mcp_bridge  - Compilar bridge nativo"
+	@echo "  make arch_mcp          - Compilar asistente con MCP"
+	@echo "  make test_mcp          - Probar bridge MCP"
+	@echo "  make test_mcp_command  - Probar ejecución de comando"
+	@echo "  make check_mcp_deps    - Verificar dependencias"
+	@echo "  make clean_mcp         - Limpiar archivos MCP"
+	@echo "  make help_mcp          - Mostrar esta ayuda"
+	@echo ""
+	@echo "🎯 Para empezar:"
+	@echo "  1. make check_mcp_deps"
+	@echo "  2. make arch_mcp"
+	@echo "  3. ./gpt_arch_mcp"
+
+.PHONY: build_mcp_bridge arch_mcp test_mcp test_mcp_command check_mcp_deps clean_mcp help_mcp

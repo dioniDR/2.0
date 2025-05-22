@@ -1,0 +1,15 @@
+/home/dioni/Escritorio/gptasistente/2.0/bin/Debug/net8.0/MCPBridge
+/home/dioni/Escritorio/gptasistente/2.0/bin/Debug/net8.0/MCPBridge.deps.json
+/home/dioni/Escritorio/gptasistente/2.0/bin/Debug/net8.0/MCPBridge.runtimeconfig.json
+/home/dioni/Escritorio/gptasistente/2.0/bin/Debug/net8.0/MCPBridge.dll
+/home/dioni/Escritorio/gptasistente/2.0/bin/Debug/net8.0/MCPBridge.pdb
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.GeneratedMSBuildEditorConfig.editorconfig
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.AssemblyInfoInputs.cache
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.AssemblyInfo.cs
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.csproj.CoreCompileInputs.cache
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.sourcelink.json
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.dll
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/refint/MCPBridge.dll
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.pdb
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/MCPBridge.genruntimeconfig.cache
+/home/dioni/Escritorio/gptasistente/2.0/obj/Debug/net8.0/ref/MCPBridge.dll
