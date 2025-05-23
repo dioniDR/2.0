@@ -112,6 +112,33 @@ class Program
     {
         try
         {
+            // Lista de patrones peligrosos a bloquear
+            var dangerousPatterns = new[] {
+                "rm -rf ", "dd if=", "mkfs", ":(){ :|:& };:", "> /sda", "chmod -R 777", "chown -R"
+            };
+            foreach (var pattern in dangerousPatterns)
+            {
+                if (command.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                {
+                    return new MCPResponse
+                    {
+                        Success = false,
+                        Error = $"Comando bloqueado por seguridad: contiene '{pattern}'"
+                    };
+                }
+            }
+            // Limitar longitud del comando
+            if (command.Length > 1024)
+            {
+                return new MCPResponse
+                {
+                    Success = false,
+                    Error = "Comando demasiado largo (máx 1024 caracteres)"
+                };
+            }
+            // Log de auditoría
+            await File.AppendAllTextAsync("mcp_audit.log",
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] Ejecutando: {command}\n");
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
             {
@@ -120,37 +147,47 @@ class Program
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
-                CreateNoWindow = true
+                CreateNoWindow = true,
             };
-            
+            // Limitar recursos del entorno
+            process.StartInfo.Environment["PATH"] = "/usr/local/bin:/usr/bin:/bin";
+            process.StartInfo.Environment["HOME"] = "/tmp";
+            // Timeout para evitar comandos colgados
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             process.Start();
-            
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
-            
-            await process.WaitForExitAsync();
-            
+            try
+            {
+                await process.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                process.Kill();
+                return new MCPResponse
+                {
+                    Success = false,
+                    Error = "Comando cancelado: tiempo de ejecución excedido (30s)"
+                };
+            }
             var output = await outputTask;
             var error = await errorTask;
-            
             var result = output;
             if (!string.IsNullOrEmpty(error))
                 result += $"\n[stderr]: {error}";
-            
             result += $"\n[exit_code]: {process.ExitCode}";
-            
-            return new MCPResponse 
-            { 
-                Success = process.ExitCode == 0, 
+            return new MCPResponse
+            {
+                Success = process.ExitCode == 0,
                 Result = result.Trim()
             };
         }
         catch (Exception ex)
         {
-            return new MCPResponse 
-            { 
-                Success = false, 
-                Error = $"Error ejecutando: {ex.Message}" 
+            return new MCPResponse
+            {
+                Success = false,
+                Error = $"Error ejecutando: {ex.Message}"
             };
         }
     }

@@ -95,3 +95,53 @@ help_mcp:
 	@echo "  3. ./gpt_arch_mcp"
 
 .PHONY: build_mcp_bridge arch_mcp test_mcp test_mcp_command check_mcp_deps clean_mcp help_mcp
+
+# Variables adicionales para installer
+INSTALLER_SRCS = installer_context.c
+
+# Compilar asistente de instalación optimizado  
+arch_installer: build_mcp_bridge
+	@echo "🔨 Compilando asistente de instalación optimizado..."
+	@if [ ! -f $(MCP_BRIDGE_NATIVE) ]; then \
+		echo "❌ Bridge nativo no encontrado. Ejecutando build_mcp_bridge..."; \
+		make -f Makefile.mcp build_mcp_bridge; \
+	fi
+	$(CC) $(CFLAGS) -DMODO_ARCH_INSTALLER \
+		$(INCLUDES) -Imodulos/arch_installer \
+		-o gpt_arch_installer main_installer.c $(COMMON_SRCS) $(API_SRCS) \
+		$(MCP_CLIENT_SRCS) $(INSTALLER_SRCS) modulos/arch_installer/executor.c
+	@echo "✅ Asistente de instalación compilado como: gpt_arch_installer"
+	@echo "🚀 Para usar: ./gpt_arch_installer"
+	@echo "💰 Optimizado para bajo costo (gpt-4o-mini + contexto limitado)"
+
+# Probar optimización de contexto
+test_installer_context:
+	@echo "🧪 Probando optimización de contexto..."
+	@echo "user	lsblk" > test_context.txt
+	@echo "assistant	Mostrando discos disponibles" >> test_context.txt
+	@echo "user	fdisk /dev/sda" >> test_context.txt
+	@echo "assistant	Particionando disco" >> test_context.txt
+	@echo "user	ls" >> test_context.txt
+	@echo "assistant	Listando archivos" >> test_context.txt
+	@mv test_context.txt context.txt
+	@./gpt_arch_installer &
+	@sleep 1
+	@echo "/optimize" | ./gpt_arch_installer || true
+	@echo "✅ Prueba completada. Revisar context.txt optimizado"
+
+# Crear distribución de instalación
+dist_installer: arch_installer
+	@echo "📦 Creando distribución de instalación..."
+	@mkdir -p dist_installer/
+	@cp gpt_arch_installer $(MCP_BRIDGE_NATIVE) dist_installer/
+	@cp -r api/ dist_installer/
+	@cp -r modulos/arch_installer/ dist_installer/modulos/
+	@echo "#!/bin/bash" > dist_installer/install_arch.sh
+	@echo "cd \"\$$(dirname \"\$$0\")\"" >> dist_installer/install_arch.sh  
+	@echo "./gpt_arch_installer" >> dist_installer/install_arch.sh
+	@chmod +x dist_installer/install_arch.sh
+	@tar -czf gpt_arch_installer_dist.tar.gz dist_installer/
+	@echo "✅ Distribución creada: gpt_arch_installer_dist.tar.gz"
+	@echo "   Descomprimir en Arch ISO y ejecutar: ./install_arch.sh"
+
+.PHONY: arch_installer test_installer_context dist_installer

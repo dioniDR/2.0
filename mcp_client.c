@@ -1,21 +1,9 @@
 #include "mcp_client.h"
+#include "json_parser.h"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
 #include <ctype.h>
-
-static char* read_json_response(FILE* stream) {
-    char* buffer = malloc(8192);
-    if (!buffer) return NULL;
-    
-    if (fgets(buffer, 8192, stream)) {
-        buffer[strcspn(buffer, "\n")] = 0;
-        return buffer;
-    }
-    
-    free(buffer);
-    return NULL;
-}
 
 MCPClient* mcp_create_client() {
     MCPClient* client = malloc(sizeof(MCPClient));
@@ -91,11 +79,9 @@ void mcp_cleanup(MCPClient* client) {
 
 MCPResponse* mcp_send_command(MCPClient* client, const char* action, const char* data) {
     if (!client || !action) return NULL;
-    
     // Construir JSON para el comando
     fprintf(client->bridge_in, "{\"Action\":\"%s\"", action);
     if (data) {
-        // Escapar datos para JSON básico
         fprintf(client->bridge_in, ",\"Data\":\"");
         for (const char* p = data; *p; p++) {
             if (*p == '"' || *p == '\\') {
@@ -107,67 +93,31 @@ MCPResponse* mcp_send_command(MCPClient* client, const char* action, const char*
     }
     fprintf(client->bridge_in, "}\n");
     fflush(client->bridge_in);
-    
     // Leer respuesta
-    char* json_response = read_json_response(client->bridge_out);
-    if (!json_response) return NULL;
-    
-    // Parsear respuesta JSON básica
-    MCPResponse* response = malloc(sizeof(MCPResponse));
-    memset(response, 0, sizeof(MCPResponse));
-    
-    // Buscar campos en el JSON
-    if (strstr(json_response, "\"Success\":true")) {
-        response->success = 1;
+    char buffer[8192];
+    if (!fgets(buffer, sizeof(buffer), client->bridge_out)) {
+        return NULL;
     }
-    
-    // Extraer resultado
-    char* result_start = strstr(json_response, "\"Result\":\"");
-    if (result_start) {
-        result_start += 10;
-        char* result_end = strstr(result_start, "\",");
-        if (!result_end) result_end = strstr(result_start, "\"}");
-        
-        if (result_end) {
-            size_t len = result_end - result_start;
-            response->result = malloc(len + 1);
-            strncpy(response->result, result_start, len);
-            response->result[len] = '\0';
-            
-            // Desescapar JSON básico
-            char* src = response->result;
-            char* dst = response->result;
-            while (*src) {
-                if (*src == '\\' && *(src+1)) {
-                    src++;
-                    if (*src == 'n') *dst = '\n';
-                    else if (*src == 't') *dst = '\t';
-                    else *dst = *src;
-                } else {
-                    *dst = *src;
-                }
-                src++; dst++;
-            }
-            *dst = '\0';
-        }
+    // Parsear JSON
+    char* json_str = buffer;
+    JsonValue* json = json_parse_value(&json_str);
+    if (!json || json->type != JSON_OBJECT) {
+        json_free_value(json);
+        return NULL;
     }
-    
-    // Extraer error
-    char* error_start = strstr(json_response, "\"Error\":\"");
-    if (error_start) {
-        error_start += 9;
-        char* error_end = strstr(error_start, "\",");
-        if (!error_end) error_end = strstr(error_start, "\"}");
-        
-        if (error_end) {
-            size_t len = error_end - error_start;
-            response->error = malloc(len + 1);
-            strncpy(response->error, error_start, len);
-            response->error[len] = '\0';
-        }
+    JsonObject* obj = json->value.object;
+    // Crear respuesta
+    MCPResponse* response = calloc(1, sizeof(MCPResponse));
+    response->success = json_get_bool(obj, "Success", 0);
+    char* result = json_get_string(obj, "Result");
+    if (result) {
+        response->result = strdup(result);
     }
-    
-    free(json_response);
+    char* error = json_get_string(obj, "Error");
+    if (error) {
+        response->error = strdup(error);
+    }
+    json_free_value(json);
     return response;
 }
 
