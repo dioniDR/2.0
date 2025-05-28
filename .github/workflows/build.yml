@@ -1,0 +1,38 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+        
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y gcc jq curl
+      
+    - name: Build project
+      run: make arch_mcp
+      
+    - name: Test MCP bridge
+      run: |
+        echo '{"Action":"get_system_info"}' | timeout 10 ./MCPBridge_native | jq .Success
+        
+    - name: Create binary distribution
+      run: make create_binary_dist
+      
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: gpt-terminal-assistant-binary
+        path: gpt-terminal-assistant-binary.tar.gz

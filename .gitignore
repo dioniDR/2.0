@@ -1,10 +1,12 @@
 # Archivos ejecutables compilados
 gpt_*
-bin/
+MCPBridge_native
+MCPBridge
 
 # Archivos temporales generados en tiempo de ejecución
 req.json
 resp.json
+resp_clean.json
 out.txt
 context.txt
 
@@ -34,3 +36,19 @@ config.txt
 # Dependencias y directorios locales
 /node_modules
 /vendor
+
+# Directorios de compilación .NET
+bin/
+obj/
+dist_installer/
+
+# Archivos específicos de pruebas
+test_arch
+test_command_detection
+test_integration.sh
+lista_archivos.txt
+fecha_hora.txt
+
+# Archivos de distribución
+*.tar.gz
+*.zip*.dbg

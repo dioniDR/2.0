@@ -1,258 +1,246 @@
-# 🚀 GPT Assistant con Model Context Protocol (MCP)
+# 🚀 GPT Terminal Assistant with MCP
 
-Un asistente de terminal inteligente especializado en Arch Linux que combina la potencia de GPT con capacidades MCP (Model Context Protocol) para ejecución directa de comandos del sistema.
+A modular, intelligent terminal assistant that combines GPT's conversational AI with Model Context Protocol (MCP) for direct system command execution. Specialized for Arch Linux but extensible to other use cases.
 
-## 🎯 Características principales
+## ✨ Features
 
-- **🤖 Chat híbrido**: Combina conversación con GPT y ejecución directa de comandos
-- **🔧 Detección automática**: Reconoce comandos del usuario y los ejecuta sin confirmación
-- **🌉 Bridge MCP nativo**: Implementación Native AOT sin dependencias externas
-- **📊 Diagnósticos especializados**: Herramientas específicas para Arch Linux
-- **🔄 Contexto continuo**: Mantiene historial de comandos y respuestas
-- **📁 Arquitectura modular**: Fácil extensión para otros casos de uso
+- **🤖 Hybrid Chat**: Combines GPT conversation with direct command execution
+- **🔧 Auto-detection**: Recognizes user commands and executes them automatically
+- **🌉 Native MCP Bridge**: Implementation with Native AOT (no external dependencies)
+- **📊 Specialized Diagnostics**: Arch Linux specific tools and commands
+- **🔄 Continuous Context**: Maintains command and response history
+- **📁 Modular Architecture**: Easy to extend for other use cases
 
-## 🏗️ Arquitectura del sistema
+## 🏗️ Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   gpt_arch_mcp  │◄──►│  MCPBridge_native │◄──►│  Comandos del   │
-│   (Programa C)  │    │   (Bridge .NET)   │    │     Sistema     │
+│   gpt_arch_mcp  │◄──►│  MCPBridge_native │◄──►│  System         │
+│   (C Program)   │    │   (.NET Bridge)   │    │  Commands       │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
         │                                                │
         ▼                                                │
 ┌─────────────────┐                                     │
-│  API OpenAI     │                                     │
+│  OpenAI API     │                                     │
 │   (GPT-4o)      │                                     │
 └─────────────────┘                                     │
                                                          │
 ┌────────────────────────────────────────────────────────┘
-│                    Flujo de trabajo
-│  1. Usuario escribe: "ls" → Se ejecuta directamente
-│  2. Usuario pregunta: "¿Cómo ver el espacio?" → GPT responde + sugiere "df -h"
-│  3. Comandos especiales: /status, /diag, /help
+│                    Workflow
+│  1. User types: "ls" → Executes directly
+│  2. User asks: "How to check disk space?" → GPT responds + suggests "df -h"
+│  3. Special commands: /status, /diag, /help
 └────────────────────────────────────────────────────────
 ```
 
-## 🛠️ Tecnologías utilizadas
+## 📦 Prerequisites
 
-- **C**: Programa principal y cliente MCP
-- **C# + .NET 8**: Bridge MCP con Native AOT
-- **OpenAI API**: Integración con GPT-4o
-- **JSON**: Comunicación entre componentes
-- **Bash**: Ejecución de comandos del sistema
+- **Operating System**: Linux (tested on Ubuntu and Arch Linux)
+- **.NET 8.0 SDK**: For building the bridge (not required on final system)
+- **GCC**: For compiling C code
+- **jq**: For JSON processing
+- **curl**: For OpenAI API communication
 
-## 📦 Instalación y configuración
+## 🚀 Quick Start
 
-### Requisitos previos
+> **⚡ Want to start immediately?** See [QUICKSTART.md](QUICKSTART.md) for 5-minute setup
 
-- **Sistema operativo**: Linux (probado en Ubuntu y Arch Linux)
-- **.NET 8.0 SDK**: Para compilar el bridge (no necesario en el sistema final)
-- **GCC**: Para compilar el código C
-- **jq**: Para procesamiento JSON
-- **curl**: Para comunicación con API de OpenAI
-
-### Instalación rápida
-
+### For Users (Download Binary)
 ```bash
-# 1. Clonar el repositorio
-git clone https://github.com/tu-usuario/2.0.git
-cd 2.0
-
-# 2. Instalar dependencias
-sudo apt update && sudo apt install -y dotnet-sdk-8.0 gcc jq curl
-
-# 3. Configurar API key
-echo "API_KEY=tu_openai_api_key_aqui" > api/config.txt
-
-# 4. Compilar todo
-make arch_mcp
-
-# 5. Ejecutar
+# Download pre-built version (no .NET needed)
+wget https://github.com/your-username/gpt-terminal-assistant/releases/latest/download/gpt-terminal-assistant-binary.tar.gz
+tar -xzf gpt-terminal-assistant-binary.tar.gz && cd gpt-terminal-assistant/
+cp api/config.txt.example api/config.txt && nano api/config.txt  # Add API key
 ./gpt_arch_mcp
 ```
 
-### Configuración avanzada
-
-El sistema es completamente modular. Puedes crear nuevos módulos copiando la estructura de `modulos/arch_mcp/`:
-
+### For Developers (Build from Source)
 ```bash
-# Crear nuevo módulo
-make create_module
-# Seguir las instrucciones interactivas
+# Clone and build
+git clone https://github.com/your-username/gpt-terminal-assistant.git
+cd gpt-terminal-assistant
+sudo apt install -y dotnet-sdk-8.0 gcc jq curl  # Install dependencies
+make arch_mcp  # Build everything
+cp api/config.txt.example api/config.txt && nano api/config.txt  # Add API key
+./gpt_arch_mcp
 ```
 
-## 🎮 Uso del sistema
+> **📖 Need detailed build instructions?** See [BUILD.md](BUILD.md)
 
-### Comandos directos
-Los comandos se detectan y ejecutan automáticamente:
+## 🎮 Usage
+
+### Direct Commands
+Commands are detected and executed automatically:
 
 ```bash
 🤖 > ls -la
-🔧 Ejecutando: ls -la
---- Resultado ---
+🔧 Executing: ls -la
+--- Result ---
 total 1024
-drwxr-xr-x  8 user user  4096 ene 25 10:30 .
-[... salida del comando ...]
---- Fin ---
+drwxr-xr-x  8 user user  4096 jan 25 10:30 .
+[... command output ...]
+--- End ---
 ```
 
-### Conversación con GPT
-Las preguntas se envían automáticamente a GPT:
+### Conversation with GPT
+Questions are automatically sent to GPT:
 
 ```bash
-🤖 > ¿Cómo puedo ver el espacio en disco?
-🤖 Procesando con GPT...
---- 💬 Respuesta GPT ---
-Para ver el espacio en disco, puedes usar el comando `df -h`:
+🤖 > How can I check disk space?
+🤖 Processing with GPT...
+--- 💬 GPT Response ---
+To check disk space, you can use the `df -h` command:
 
 ```bash
 df -h
 ```
 
-Este comando muestra el uso de disco en formato legible.
---- Fin ---
+This command shows disk usage in human-readable format.
+--- End ---
 
-💡 GPT sugiere ejecutar: df -h
-¿Deseas ejecutarlo? [s/N]: s
+💡 GPT suggests running: df -h
+Do you want to execute it? [y/N]: y
 ```
 
-### Comandos especiales
+### Special Commands
 
-- `/help` - Mostrar ayuda completa
-- `/status` - Información del sistema vía MCP
-- `/diag` - Diagnóstico completo de Arch Linux
-- `/clear` - Limpiar contexto de conversación
-- `/mcp` - Estado del bridge MCP
-- `salir/exit/quit` - Terminar programa
+- `/help` - Show complete help
+- `/status` - System information via MCP
+- `/diag` - Complete Arch Linux diagnostics
+- `/clear` - Clear conversation context
+- `/mcp` - MCP bridge status
+- `exit/salir/quit` - Exit program
 
-## 🧩 Módulos disponibles
+## 🧩 Available Modules
 
-### arch_mcp (Principal)
-- **Especialización**: Instalación y mantenimiento de Arch Linux
-- **Características**: Diagnósticos específicos, detección de comandos Arch
-- **Configuración**: `modulos/arch_mcp/config.ini`
+### arch_mcp (Main)
+- **Specialization**: Arch Linux installation and maintenance
+- **Features**: Specific diagnostics, Arch command detection
+- **Configuration**: `modulos/arch_mcp/config.ini`
 
 ### arch (Original)
-- **Descripción**: Versión original sin MCP
-- **Uso**: `make arch && ./gpt_arch`
-- **Propósito**: Comparación y fallback
+- **Description**: Original version without MCP
+- **Usage**: `make arch && ./gpt_arch`
+- **Purpose**: Comparison and fallback
 
 ### chat
-- **Descripción**: Asistente conversacional general
-- **Uso**: `make chat && ./gpt_chat`
+- **Description**: General conversational assistant
+- **Usage**: `make chat && ./gpt_chat`
 
 ### creator
-- **Descripción**: Generador de estructuras de proyecto
-- **Uso**: `make creator && ./gpt_creator`
+- **Description**: Project structure generator
+- **Usage**: `make creator && ./gpt_creator`
 
-## 🔧 Comandos de desarrollo
+## 🔧 Development Commands
 
 ```bash
-# Compilación
-make arch_mcp              # Compilar versión MCP
-make arch                  # Compilar versión original
-make list                  # Ver todos los módulos
+# Compilation
+make arch_mcp              # Build MCP version
+make arch                  # Build original version
+make list                  # See all modules
 
 # Testing
-make test_mcp              # Probar bridge MCP
-make test_api              # Probar API key
-make check_mcp_deps        # Verificar dependencias
+make test_mcp              # Test MCP bridge
+make test_api              # Test API key
+make check_mcp_deps        # Check dependencies
 
-# Limpieza
-make clean                 # Limpiar archivos compilados
-make clean_mcp             # Limpiar solo archivos MCP
+# Cleanup
+make clean                 # Clean compiled files
+make clean_mcp             # Clean MCP files only
 
-# Ayuda
-make help                  # Ayuda general
-make help_mcp              # Ayuda específica MCP
+# Help
+make help                  # General help
+make help_mcp              # MCP specific help
 ```
 
-## 📁 Estructura del proyecto
+## 📁 Project Structure
 
 ```
-gpt-assistant/
-├── 📂 api/                     # Configuración API OpenAI
-│   ├── openai.c                # Cliente API
+gpt-terminal-assistant/
+├── 📂 api/                     # OpenAI API configuration
+│   ├── openai.c                # API client
 │   ├── openai.h
-│   └── config.txt              # API key (no incluido en repo)
-├── 📂 common/                  # Utilidades compartidas
+│   └── config.txt.example      # API key template
+├── 📂 common/                  # Shared utilities
 │   ├── includes/
-│   ├── utils.c                 # Funciones de utilidad
-│   ├── config_manager.c        # Gestor de configuración
-│   └── context.c               # Manejo de contexto
-├── 📂 modulos/                 # Módulos especializados
-│   ├── arch/                   # Módulo original Arch
-│   ├── arch_mcp/              # Módulo Arch con MCP
-│   ├── chat/                   # Módulo conversacional
-│   └── creator/                # Módulo generador
-├── 📄 main.c                   # Main original
-├── 📄 main_mcp.c               # Main extendido con MCP
-├── 📄 mcp_client.h/c           # Cliente MCP en C
-├── 📄 MCPBridge.cs             # Bridge MCP en C#
-├── 📄 MCPBridge.csproj         # Proyecto .NET
-├── 📄 Makefile                 # Build principal
-├── 📄 Makefile.mcp             # Build MCP
-└── 📄 README.md                # Esta documentación
+│   ├── utils.c                 # Utility functions
+│   ├── config_manager.c        # Configuration manager
+│   └── context.c               # Context handling
+├── 📂 modulos/                 # Specialized modules
+│   ├── arch/                   # Original Arch module
+│   ├── arch_mcp/              # Arch module with MCP
+│   ├── chat/                   # Conversational module
+│   └── creator/                # Generator module
+├── 📄 main.c                   # Original main
+├── 📄 main_mcp.c               # Extended main with MCP
+├── 📄 mcp_client.h/c           # MCP client in C
+├── 📄 MCPBridge.cs             # MCP bridge in C#
+├── 📄 MCPBridge.csproj         # .NET project
+├── 📄 Makefile                 # Main build
+├── 📄 Makefile.mcp             # MCP build
+└── 📄 README.md                # This documentation
 ```
 
-## 🚀 Distribución
+## 🔧 Creating New Modules
 
-Para distribuir el asistente compilado:
+Use the interactive module creator:
 
 ```bash
-# Crear paquete de distribución
-make dist
-
-# Resultado: gpt_assistant_dist.tar.gz
-# Contiene solo los archivos necesarios para ejecutar
+./create_module.sh
 ```
 
-### Archivos necesarios para distribución:
-- `gpt_arch_mcp` - Ejecutable principal
-- `MCPBridge_native` - Bridge MCP (sin dependencias)
-- `api/config.txt` - Configuración API
-- `modulos/arch_mcp/` - Configuración del módulo
+Or manually create the structure:
 
-## ⚠️ Problemas conocidos
-
-1. **Vulnerabilidades en System.Text.Json 8.0.0**: Advertencias durante compilación (no afectan funcionalidad)
-2. **Comandos múltiples**: Los comandos en la misma línea se interpretan como preguntas a GPT
-3. **Dependencia de jq**: Requerido para procesamiento JSON de respuestas OpenAI
-
-## 🤝 Contribución
-
-1. Fork el proyecto
-2. Crea una branch para tu feature (`git checkout -b feature/nueva-funcionalidad`)
-3. Commit tus cambios (`git commit -am 'Agregar nueva funcionalidad'`)
-4. Push a la branch (`git push origin feature/nueva-funcionalidad`)
-5. Crea un Pull Request
-
-### Estructura para nuevos módulos:
 ```
-modulos/nuevo_modulo/
-├── config.ini          # Configuración del módulo
-├── role.txt            # Rol específico para GPT
-├── executor.h          # Header del executor
-└── executor.c          # Implementación del executor
+modulos/new_module/
+├── config.ini          # Module configuration
+├── role.txt            # Specific role for GPT
+├── executor.h          # Executor header
+└── executor.c          # Executor implementation
 ```
 
-## 📄 Licencia
+## 🚀 Distribution
 
-MIT License - ver archivo `LICENSE` para detalles.
+To create a distribution package:
 
-## 🙏 Agradecimientos
+```bash
+# Create distribution package
+make dist_installer
 
-- **OpenAI**: Por proporcionar la API GPT-4o
-- **Microsoft**: Por .NET Native AOT
-- **Anthropic**: Por el concepto Model Context Protocol
-- **Comunidad Arch Linux**: Por la inspiración y testing
+# Result: gpt_arch_installer_dist.tar.gz
+# Contains only necessary files to run
+```
 
-## 📞 Soporte
+### Files needed for distribution:
+- `gpt_arch_mcp` - Main executable
+- `MCPBridge_native` - MCP bridge (no dependencies)
+- `api/config.txt` - API configuration
+- `modulos/arch_mcp/` - Module configuration
 
-- **Issues**: [GitHub Issues](https://github.com/tu-usuario/2.0/issues)
-- **Discusiones**: [GitHub Discussions](https://github.com/tu-usuario/2.0/discussions)
-- **Email**: tu-email@ejemplo.com
+## 🤝 Contributing
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/new-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/new-feature`)
+5. Create a Pull Request
+
+## 📄 License
+
+MIT License - see `LICENSE` file for details.
+
+## 🙏 Acknowledgments
+
+- **OpenAI**: For providing the GPT-4o API
+- **Microsoft**: For .NET Native AOT
+- **Anthropic**: For the Model Context Protocol concept
+- **Arch Linux Community**: For inspiration and testing
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-username/gpt-terminal-assistant/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/gpt-terminal-assistant/discussions)
 
 ---
 
-**⭐ Si te gusta el proyecto, dale una estrella en GitHub!**
+**⭐ If you like this project, give it a star on GitHub!**
