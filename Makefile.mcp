@@ -1,23 +1,30 @@
 # Makefile.mcp - Reglas adicionales para MCP
 # Este archivo se incluye en el Makefile principal
 
+# Directorio de salida (debe coincidir con Makefile principal)
+OUT_DIR = out
+
 # Variables específicas para MCP
 MCP_BRIDGE = MCPBridge
-MCP_BRIDGE_NATIVE = MCPBridge_native
+MCP_BRIDGE_NATIVE = $(OUT_DIR)/MCPBridge_native
 MCP_CLIENT_SRCS = mcp_client.c
 MAIN_MCP = main_mcp.c
 
+# Crear directorio de salida si no existe
+$(OUT_DIR):
+	@mkdir -p $(OUT_DIR)
+
 # Compilar el bridge nativo
-build_mcp_bridge:
+build_mcp_bridge: $(OUT_DIR)
 	@echo "🔨 Compilando MCP Bridge nativo..."
 	@if [ ! -f $(MCP_BRIDGE).csproj ]; then \
 		echo "❌ No se encontró MCPBridge.csproj"; \
 		exit 1; \
 	fi
 	@echo "📦 Compilando a código nativo (puede tardar 1-2 minutos)..."
-	@dotnet publish $(MCP_BRIDGE).csproj -r linux-x64 -c Release -p:PublishAot=true -o ./
-	@if [ -f $(MCP_BRIDGE) ]; then \
-		mv $(MCP_BRIDGE) $(MCP_BRIDGE_NATIVE); \
+	@dotnet publish $(MCP_BRIDGE).csproj -r linux-x64 -c Release -p:PublishAot=true -o $(OUT_DIR)/
+	@if [ -f $(OUT_DIR)/$(MCP_BRIDGE) ]; then \
+		mv $(OUT_DIR)/$(MCP_BRIDGE) $(MCP_BRIDGE_NATIVE); \
 		chmod +x $(MCP_BRIDGE_NATIVE); \
 		echo "✅ Bridge nativo compilado: $(MCP_BRIDGE_NATIVE)"; \
 	else \
@@ -25,25 +32,84 @@ build_mcp_bridge:
 		exit 1; \
 	fi
 
-# Compilar módulo arch_mcp
+# Compilar módulo arch_mcp auto-contenido
 arch_mcp: build_mcp_bridge
 	@echo "🔨 Compilando módulo arch_mcp..."
 	@if [ ! -f $(MCP_BRIDGE_NATIVE) ]; then \
 		echo "❌ Bridge nativo no encontrado. Ejecutando build_mcp_bridge..."; \
 		make -f Makefile.mcp build_mcp_bridge; \
 	fi
+	
+	# Compilar el ejecutable principal
 	$(CC) $(CFLAGS) -DMODO_ARCH_MCP \
 		$(INCLUDES) -Imodulos/arch_mcp \
-		-o gpt_arch_mcp $(MAIN_MCP) $(COMMON_SRCS) $(API_SRCS) $(MCP_CLIENT_SRCS) modulos/arch_mcp/executor.c
-	@echo "✅ Módulo arch_mcp compilado como: gpt_arch_mcp"
-	@echo "🚀 Para ejecutar: ./gpt_arch_mcp"
+		-o $(OUT_DIR)/gpt_arch_mcp $(MAIN_MCP) $(COMMON_SRCS) $(API_SRCS) $(MCP_CLIENT_SRCS) modulos/arch_mcp/executor.c
+	
+	# Crear estructura auto-contenida del módulo
+	@echo "📦 Creando módulo arch_mcp auto-contenido..."
+	@mkdir -p $(OUT_DIR)/arch_mcp/api
+	@mkdir -p $(OUT_DIR)/arch_mcp/modulos/arch_mcp
+	
+	# Copiar archivos necesarios
+	@cp $(OUT_DIR)/gpt_arch_mcp $(OUT_DIR)/arch_mcp/
+	@cp $(MCP_BRIDGE_NATIVE) $(OUT_DIR)/arch_mcp/
+	@cp api/config.txt.example $(OUT_DIR)/arch_mcp/api/
+	@cp -r modulos/arch_mcp/ $(OUT_DIR)/arch_mcp/modulos/
+	
+	# Crear script de ejecución
+	@echo "#!/bin/bash" > $(OUT_DIR)/arch_mcp/run.sh
+	@echo "cd \"\$(dirname \"\$0\")\"" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "# Verificar dependencias" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "echo '🔍 Verificando dependencias...'" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "which jq >/dev/null || (echo '❌ Instala jq: sudo apt install jq'; exit 1)" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "which curl >/dev/null || (echo '❌ Instala curl: sudo apt install curl'; exit 1)" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "# Verificar configuración API" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "if [ ! -f api/config.txt ]; then" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "  echo '⚠️  Configura tu API key:'" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "  echo '  cp api/config.txt.example api/config.txt'" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "  echo '  nano api/config.txt  # Agrega tu OpenAI API key'" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "  exit 1" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "fi" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "# Ejecutar asistente" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "echo '🚀 Lanzando GPT Terminal Assistant con MCP...'" >> $(OUT_DIR)/arch_mcp/run.sh
+	@echo "./gpt_arch_mcp \"\$@\"" >> $(OUT_DIR)/arch_mcp/run.sh
+	@chmod +x $(OUT_DIR)/arch_mcp/run.sh
+	
+	# Crear README para el módulo
+	@echo "# 🚀 GPT Arch Linux Assistant con MCP" > $(OUT_DIR)/arch_mcp/README.md
+	@echo "" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "Módulo auto-contenido con todas las dependencias incluidas." >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "## Configuración rápida:" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "\`\`\`bash" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "# 1. Configurar API key" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "cp api/config.txt.example api/config.txt" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "nano api/config.txt  # Agregar tu OpenAI API key" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "# 2. Ejecutar" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "./run.sh" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "\`\`\`" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "## Archivos incluidos:" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "- \`gpt_arch_mcp\` - Ejecutable principal" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "- \`MCPBridge_native\` - Bridge MCP (sin dependencias .NET)" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "- \`api/config.txt.example\` - Plantilla de configuración" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "- \`modulos/arch_mcp/\` - Configuración del módulo" >> $(OUT_DIR)/arch_mcp/README.md
+	@echo "- \`run.sh\` - Script de ejecución" >> $(OUT_DIR)/arch_mcp/README.md
+	
+	@echo "✅ Módulo arch_mcp compilado y empaquetado"
+	@echo "📁 Ubicación: $(OUT_DIR)/arch_mcp/"
+	@echo "🚀 Para usar: cd $(OUT_DIR)/arch_mcp && ./run.sh"
 
 # Probar el bridge MCP
 test_mcp:
 	@echo "🔍 Probando MCP Bridge..."
 	@if [ -f $(MCP_BRIDGE_NATIVE) ]; then \
 		echo "Probando comando get_system_info..."; \
-		echo '{"Action":"get_system_info"}' | ./$(MCP_BRIDGE_NATIVE) | head -n 1 | grep -q "Success" \
+		echo '{"Action":"get_system_info"}' | $(MCP_BRIDGE_NATIVE) | head -n 1 | grep -q "Success" \
 		&& echo "✅ Bridge MCP funciona correctamente" \
 		|| echo "❌ Bridge MCP no responde correctamente"; \
 	else \
@@ -54,7 +120,7 @@ test_mcp:
 test_mcp_command:
 	@echo "🔍 Probando ejecución de comando..."
 	@if [ -f $(MCP_BRIDGE_NATIVE) ]; then \
-		echo '{"Action":"execute_command","Data":"uname -a"}' | ./$(MCP_BRIDGE_NATIVE); \
+		echo '{"Action":"execute_command","Data":"uname -a"}' | $(MCP_BRIDGE_NATIVE); \
 	else \
 		echo "❌ Bridge nativo no encontrado"; \
 	fi
@@ -67,81 +133,70 @@ check_mcp_deps:
 	@echo "✅ .NET $(shell dotnet --version) encontrado"
 	@which gcc > /dev/null || (echo "❌ GCC no está instalado"; exit 1)
 	@echo "✅ GCC encontrado"
+	@which jq > /dev/null || (echo "❌ jq no está instalado"; exit 1)
+	@echo "✅ jq encontrado"
+	@which curl > /dev/null || (echo "❌ curl no está instalado"; exit 1)
+	@echo "✅ curl encontrado"
 	@echo "✅ Todas las dependencias están disponibles"
 
 # Limpiar archivos MCP
 clean_mcp:
 	@echo "🧹 Limpiando archivos MCP..."
-	rm -f gpt_arch_mcp
+	rm -f $(OUT_DIR)/gpt_arch_mcp
 	rm -f $(MCP_BRIDGE_NATIVE)
-	rm -f mcp_client.o
+	rm -f $(OUT_DIR)/mcp_client.o
 	rm -rf bin/ obj/
 	@echo "✅ Archivos MCP limpiados"
+
+# Crear distribución binaria completa
+create_binary_dist: arch_mcp
+	@echo "📦 Creando distribución binaria..."
+	@mkdir -p dist/
+	@cp $(OUT_DIR)/gpt_arch_mcp $(MCP_BRIDGE_NATIVE) dist/
+	@cp -r api/ modulos/ dist/
+	@cp README.md .gitignore dist/ 2>/dev/null || true
+	@echo "#!/bin/bash" > dist/run.sh
+	@echo "cd \"\$$(dirname \"\$$0\")\"" >> dist/run.sh
+	@echo "echo '🚀 GPT Terminal Assistant - Binary Distribution'" >> dist/run.sh
+	@echo "echo 'Verificando dependencias...'" >> dist/run.sh
+	@echo "which jq >/dev/null || (echo '❌ Instala jq: sudo apt install jq'; exit 1)" >> dist/run.sh
+	@echo "which curl >/dev/null || (echo '❌ Instala curl: sudo apt install curl'; exit 1)" >> dist/run.sh
+	@echo "if [ ! -f api/config.txt ]; then" >> dist/run.sh
+	@echo "  echo '⚠️  Configura tu API key:'" >> dist/run.sh
+	@echo "  echo '  cp api/config.txt.example api/config.txt'" >> dist/run.sh
+	@echo "  echo '  nano api/config.txt  # Agrega tu OpenAI API key'" >> dist/run.sh
+	@echo "  exit 1" >> dist/run.sh
+	@echo "fi" >> dist/run.sh
+	@echo "echo '✅ Lanzando asistente...'" >> dist/run.sh
+	@echo "./gpt_arch_mcp \"\$$@\"" >> dist/run.sh
+	@chmod +x dist/run.sh
+	@tar -czf gpt-terminal-assistant-binary.tar.gz dist/
+	@echo "✅ Distribución binaria creada: gpt-terminal-assistant-binary.tar.gz"
+	@echo "📋 Contenido:"
+	@echo "   - Binarios compilados sin dependencias .NET"
+	@echo "   - Script de ejecución automático (./run.sh)"
+	@echo "   - Solo requiere: jq, curl en el sistema destino"
+	@rm -rf dist/
 
 # Ayuda específica para MCP
 help_mcp:
 	@echo "🚀 Comandos MCP disponibles:"
-	@echo "  make build_mcp_bridge  - Compilar bridge nativo"
-	@echo "  make arch_mcp          - Compilar asistente con MCP"
-	@echo "  make test_mcp          - Probar bridge MCP"
-	@echo "  make test_mcp_command  - Probar ejecución de comando"
-	@echo "  make check_mcp_deps    - Verificar dependencias"
-	@echo "  make clean_mcp         - Limpiar archivos MCP"
-	@echo "  make help_mcp          - Mostrar esta ayuda"
+	@echo "  make build_mcp_bridge     - Compilar bridge nativo en $(OUT_DIR)/"
+	@echo "  make arch_mcp             - Compilar asistente con MCP"
+	@echo "  make test_mcp             - Probar bridge MCP"
+	@echo "  make test_mcp_command     - Probar ejecución de comando"
+	@echo "  make check_mcp_deps       - Verificar dependencias"
+	@echo "  make clean_mcp            - Limpiar archivos MCP"
+	@echo "  make create_binary_dist   - Crear distribución sin dependencias"
+	@echo "  make help_mcp             - Mostrar esta ayuda"
+	@echo ""
+	@echo "📁 Archivos de salida:"
+	@echo "  $(OUT_DIR)/gpt_arch_mcp       - Ejecutable principal"
+	@echo "  $(OUT_DIR)/MCPBridge_native   - Bridge MCP (sin dependencias .NET)"
 	@echo ""
 	@echo "🎯 Para empezar:"
 	@echo "  1. make check_mcp_deps"
 	@echo "  2. make arch_mcp"
-	@echo "  3. ./gpt_arch_mcp"
+	@echo "  3. $(OUT_DIR)/gpt_arch_mcp"
 
-.PHONY: build_mcp_bridge arch_mcp test_mcp test_mcp_command check_mcp_deps clean_mcp help_mcp
-
-# Variables adicionales para installer
-INSTALLER_SRCS = installer_context.c
-
-# Compilar asistente de instalación optimizado  
-arch_installer: build_mcp_bridge
-	@echo "🔨 Compilando asistente de instalación optimizado..."
-	@if [ ! -f $(MCP_BRIDGE_NATIVE) ]; then \
-		echo "❌ Bridge nativo no encontrado. Ejecutando build_mcp_bridge..."; \
-		make -f Makefile.mcp build_mcp_bridge; \
-	fi
-	$(CC) $(CFLAGS) -DMODO_ARCH_INSTALLER \
-		$(INCLUDES) -Imodulos/arch_installer \
-		-o gpt_arch_installer main_installer.c $(COMMON_SRCS) $(API_SRCS) \
-		$(MCP_CLIENT_SRCS) $(INSTALLER_SRCS) modulos/arch_installer/executor.c
-	@echo "✅ Asistente de instalación compilado como: gpt_arch_installer"
-	@echo "🚀 Para usar: ./gpt_arch_installer"
-	@echo "💰 Optimizado para bajo costo (gpt-4o-mini + contexto limitado)"
-
-# Probar optimización de contexto
-test_installer_context:
-	@echo "🧪 Probando optimización de contexto..."
-	@echo "user	lsblk" > test_context.txt
-	@echo "assistant	Mostrando discos disponibles" >> test_context.txt
-	@echo "user	fdisk /dev/sda" >> test_context.txt
-	@echo "assistant	Particionando disco" >> test_context.txt
-	@echo "user	ls" >> test_context.txt
-	@echo "assistant	Listando archivos" >> test_context.txt
-	@mv test_context.txt context.txt
-	@./gpt_arch_installer &
-	@sleep 1
-	@echo "/optimize" | ./gpt_arch_installer || true
-	@echo "✅ Prueba completada. Revisar context.txt optimizado"
-
-# Crear distribución de instalación
-dist_installer: arch_installer
-	@echo "📦 Creando distribución de instalación..."
-	@mkdir -p dist_installer/
-	@cp gpt_arch_installer $(MCP_BRIDGE_NATIVE) dist_installer/
-	@cp -r api/ dist_installer/
-	@cp -r modulos/arch_installer/ dist_installer/modulos/
-	@echo "#!/bin/bash" > dist_installer/install_arch.sh
-	@echo "cd \"\$$(dirname \"\$$0\")\"" >> dist_installer/install_arch.sh  
-	@echo "./gpt_arch_installer" >> dist_installer/install_arch.sh
-	@chmod +x dist_installer/install_arch.sh
-	@tar -czf gpt_arch_installer_dist.tar.gz dist_installer/
-	@echo "✅ Distribución creada: gpt_arch_installer_dist.tar.gz"
-	@echo "   Descomprimir en Arch ISO y ejecutar: ./install_arch.sh"
-
-.PHONY: arch_installer test_installer_context dist_installer
+.PHONY: build_mcp_bridge arch_mcp test_mcp test_mcp_command check_mcp_deps clean_mcp help_mcp create_binary_dist

@@ -1,54 +1,82 @@
-# Archivos ejecutables compilados
+# =====================================
+# EJECUTABLES COMPILADOS (NUNCA SUBIR)
+# =====================================
 gpt_*
 MCPBridge_native
 MCPBridge
+MCPBridge.exe
+*.exe
+*.dll
+*.dbg
+*.pdb
 
-# Archivos temporales generados en tiempo de ejecución
+# =====================================
+# DIRECTORIOS DE COMPILACIÓN
+# =====================================
+out/
+bin/
+obj/
+dist/
+dist_installer/
+
+# =====================================
+# ARCHIVOS TEMPORALES DE EJECUCIÓN
+# =====================================
 req.json
 resp.json
 resp_clean.json
 out.txt
 context.txt
 
-# Archivos de configuración (contienen API keys)
+# =====================================
+# CONFIGURACIÓN CON API KEYS (PRIVADO)
+# =====================================
 api/config.txt
 config.txt
+*.key
+*secret*
 
-# Archivos de respaldo y temporales
+# =====================================
+# ARCHIVOS TEMPORALES DEL SISTEMA
+# =====================================
 *~
 *.bak
 *.swp
 *.tmp
 .DS_Store
 
-# Archivos de objeto y dependencias
+# =====================================
+# ARCHIVOS DE OBJETO Y DEPENDENCIAS
+# =====================================
 *.o
 *.d
 
-# Directorios de desarrollo y editores
+# =====================================
+# ENTORNOS DE DESARROLLO
+# =====================================
 .vscode/
 .idea/
 .vim/
+*.code-workspace
 
-# Logs
+# =====================================
+# LOGS Y ARCHIVOS DE DISTRIBUCIÓN
+# =====================================
 *.log
+*.tar.gz
+*.zip
+*.rar
 
-# Dependencias y directorios locales
-/node_modules
-/vendor
-
-# Directorios de compilación .NET
-bin/
-obj/
-dist_installer/
-
-# Archivos específicos de pruebas
-test_arch
-test_command_detection
-test_integration.sh
+# =====================================
+# ARCHIVOS DE PRUEBA TEMPORALES
+# =====================================
+test_*
 lista_archivos.txt
 fecha_hora.txt
 
-# Archivos de distribución
-*.tar.gz
-*.zip*.dbg
+# =====================================
+# DEPENDENCIAS Y MÓDULOS
+# =====================================
+/node_modules
+/vendor
+packages/

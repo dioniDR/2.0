@@ -1,5 +1,5 @@
 #include "mcp_client.h"
-#include "json_parser.h"
+#include "common/includes/json_parser.h"
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
@@ -35,8 +35,8 @@ MCPClient* mcp_create_client() {
         close(to_bridge[0]);
         close(from_bridge[1]);
         
-        // Ejecutar el bridge nativo
-        execl("./MCPBridge_native", "MCPBridge_native", NULL);
+        // Ejecutar el bridge nativo desde out/
+        execl("./out/MCPBridge_native", "MCPBridge_native", NULL);
         exit(1);
     }
     
@@ -79,6 +79,7 @@ void mcp_cleanup(MCPClient* client) {
 
 MCPResponse* mcp_send_command(MCPClient* client, const char* action, const char* data) {
     if (!client || !action) return NULL;
+    
     // Construir JSON para el comando
     fprintf(client->bridge_in, "{\"Action\":\"%s\"", action);
     if (data) {
@@ -93,31 +94,30 @@ MCPResponse* mcp_send_command(MCPClient* client, const char* action, const char*
     }
     fprintf(client->bridge_in, "}\n");
     fflush(client->bridge_in);
+    
     // Leer respuesta
     char buffer[8192];
     if (!fgets(buffer, sizeof(buffer), client->bridge_out)) {
         return NULL;
     }
-    // Parsear JSON
-    char* json_str = buffer;
-    JsonValue* json = json_parse_value(&json_str);
-    if (!json || json->type != JSON_OBJECT) {
-        json_free_value(json);
-        return NULL;
-    }
-    JsonObject* obj = json->value.object;
-    // Crear respuesta
+    
+    // Crear respuesta usando nuestro parser simple
     MCPResponse* response = calloc(1, sizeof(MCPResponse));
-    response->success = json_get_bool(obj, "Success", 0);
-    char* result = json_get_string(obj, "Result");
+    if (!response) return NULL;
+    
+    // Usar nuestras funciones simples de json_parser.h
+    response->success = json_extract_bool(buffer, "Success");
+    
+    char* result = json_extract_string(buffer, "Result");
     if (result) {
-        response->result = strdup(result);
+        response->result = result;
     }
-    char* error = json_get_string(obj, "Error");
+    
+    char* error = json_extract_string(buffer, "Error");
     if (error) {
-        response->error = strdup(error);
+        response->error = error;
     }
-    json_free_value(json);
+    
     return response;
 }
 
